@@ -27,6 +27,12 @@ Make sure to look at [Memory table](https://docs.google.com/spreadsheets/d/1GVs7
 * `overload_torque` (optional): Overload torque threshold.
 * `return_delay_time` (optional): Response delay time.
 * `acceleration` (optional): Acceleration value.
+* `command_speed` (optional): Goal speed used in each position command. Defaults to `2400`.
+* `command_acceleration` (optional): Goal acceleration used in each position command, `0..255`. Defaults to `50`.
+
+`acceleration` is written during hardware initialization, but each position
+command also carries an acceleration byte. Use `command_acceleration` when you
+want to tune runtime motion smoothness.
 
 ### Example
 
@@ -54,6 +60,8 @@ joints:
     d_coefficient: 32
     return_delay_time: 0
     acceleration: 254
+    command_speed: 1200
+    command_acceleration: 25
 ```
 
 ### URDF Integration

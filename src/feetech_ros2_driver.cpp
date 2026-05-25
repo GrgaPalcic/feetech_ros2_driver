@@ -108,6 +108,8 @@ CallbackReturn FeetechHardwareInterface::load_yaml_config_and_warn_(JointIdConfi
 
 CallbackReturn FeetechHardwareInterface::configure_joints_(const JointIdConfigMap& yaml_by_id) {
   joint_ids_.assign(info_.joints.size(), 0);
+  command_speeds_.assign(info_.joints.size(), 2400);
+  command_accelerations_.assign(info_.joints.size(), 50);
 
   for (size_t i = 0; i < info_.joints.size(); ++i) {
     const auto& joint = info_.joints[i];
@@ -132,6 +134,25 @@ CallbackReturn FeetechHardwareInterface::configure_joints_(const JointIdConfigMa
 
     if (merged_params.find("offset") != merged_params.end()) {
       spdlog::warn("Joint '{}': 'offset' param is deprecated and ignored — use 'homing_offset' instead", joint_name);
+    }
+
+    if (const auto param_it = merged_params.find("command_speed"); param_it != merged_params.end()) {
+      command_speeds_[i] = std::stoi(param_it->second);
+      if (command_speeds_[i] < 0 || command_speeds_[i] > 32767) {
+        spdlog::error("Joint '{}': command_speed must be in [0, 32767], got {}",
+                      joint_name,
+                      command_speeds_[i]);
+        return CallbackReturn::ERROR;
+      }
+    }
+    if (const auto param_it = merged_params.find("command_acceleration"); param_it != merged_params.end()) {
+      command_accelerations_[i] = std::stoi(param_it->second);
+      if (command_accelerations_[i] < 0 || command_accelerations_[i] > 255) {
+        spdlog::error("Joint '{}': command_acceleration must be in [0, 255], got {}",
+                      joint_name,
+                      command_accelerations_[i]);
+        return CallbackReturn::ERROR;
+      }
     }
 
     // Disable torque and unlock EPROM before writing parameters
@@ -287,8 +308,8 @@ hardware_interface::return_type FeetechHardwareInterface::write(const rclcpp::Ti
     if (!info_.joints[i].command_interfaces.empty()) {
       commanded_joint_ids.push_back(joint_ids_[i]);
       commanded_positions.push_back(feetech_driver::from_radians(hw_positions_[i]) + feetech_driver::kStsMidpoint);
-      commanded_speeds.push_back(2400);       // Default speed
-      commanded_accelerations.push_back(50);  // Default acceleration
+      commanded_speeds.push_back(command_speeds_[i]);
+      commanded_accelerations.push_back(command_accelerations_[i]);
     }
   }
 
